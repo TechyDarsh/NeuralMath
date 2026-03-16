@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuralMathByDarsh Dashboard</title>
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons for premium Look -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Abstract Background Elements -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-grid"></div>
+
+    <main class="dashboard-container">
+        
+        <header class="app-header">
+            <div class="logo-wrapper">
+                <i data-lucide="scan-line" class="logo-icon"></i>
+                <div class="logo-text">
+                    <h1>NeuralMathByDarsh</h1>
+                    <span class="version-tag">AI v2.0</span>
+                </div>
+            </div>
+            <p class="subtitle">Advanced Vision-Based Equation Solver</p>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="workspace">
+            
+            <!-- Left Column: Input -->
+            <section class="panel input-panel">
+                <div class="panel-header">
+                    <i data-lucide="upload-cloud"></i>
+                    <h2>Input Source</h2>
+                </div>
+                
+                <label id="dropzone" class="dropzone">
+                    <input type="file" id="imageInput" accept="image/*" hidden>
+                    <div class="dropzone-content" id="dropzoneContent">
+                        <i data-lucide="image-plus" class="upload-icon"></i>
+                        <p>Browse or drop image here</p>
+                        <span class="dropzone-hint">Supports PNG, JPG, JPEG</span>
+                    </div>
+                    <img id="imagePreview" class="image-preview" style="display: none;" alt="Preview">
+                </label>
+
+                <button id="solveBtn" class="primary-btn" disabled>
+                    <i data-lucide="cpu"></i>
+                    <span>Execute Analysis</span>
+                </button>
+            </section>
+
+            <!-- Right Column: Output -->
+            <section class="panel output-panel">
+                <div class="panel-header">
+                    <i data-lucide="activity"></i>
+                    <h2>AI Analysis Console</h2>
+                </div>
+
+                <!-- Status Console -->
+                <div class="console-box" id="consoleBox">
+                    <div class="system-status" id="systemStatus">
+                        <span class="status-indicator"></span>
+                        <span class="status-text">System Idle. Awaiting visual input...</span>
+                    </div>
+                    
+                    <div id="loader" class="loader-container" style="display: none;">
+                        <div class="spinner"></div>
+                        <span>Processing Neural Network Layers...</span>
+                    </div>
+
+                    <div id="resultSection" class="results-container" style="display: none;">
+                        <!-- Equation Card -->
+                        <div class="result-card">
+                            <div class="card-label">
+                                <i data-lucide="scan-text"></i>
+                                <span>Recognized Equation</span>
+                            </div>
+                            <div class="card-content">
+                                <code id="equationOutput" class="math-code"></code>
+                            </div>
+                        </div>
+
+                        <!-- Solution Card -->
+                        <div class="result-card highlight-card">
+                            <div class="card-label">
+                                <i data-lucide="check-circle-2" class="success-icon"></i>
+                                <span>Mathematical Resolution</span>
+                            </div>
+                            <div class="card-content">
+                                <code id="solutionOutput" class="math-code success-text"></code>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Error State -->
+                    <div id="errorSection" class="error-container" style="display: none;">
+                        <i data-lucide="alert-triangle"></i>
+                        <span id="errorText"></span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const dropzoneContent = document.getElementById('dropzoneContent');
+        const dropzone = document.getElementById('dropzone');
+        const solveBtn = document.getElementById('solveBtn');
+        const loader = document.getElementById('loader');
+        const resultSection = document.getElementById('resultSection');
+        const errorSection = document.getElementById('errorSection');
+        const errorText = document.getElementById('errorText');
+        const systemStatus = document.getElementById('systemStatus');
+        
+        // Drag and Drop Effects
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('drag-active');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('drag-active');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-active');
+            if(e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                imageInput.files = e.dataTransfer.files;
+                handleImageUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        // Click Upload
+        imageInput.addEventListener('change', function() {
+            if (this.files[0]) {
+                handleImageUpload(this.files[0]);
+            }
+        });
+
+        function handleImageUpload(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+                dropzoneContent.style.opacity = '0';
+                setTimeout(() => dropzoneContent.style.display = 'none', 300);
+                
+                solveBtn.disabled = false;
+                solveBtn.classList.add('ready');
+                
+                // Reset states
+                resultSection.style.display = 'none';
+                errorSection.style.display = 'none';
+                systemStatus.innerHTML = '<span class="status-indicator ready-blob"></span><span class="status-text">Image loaded. System ready for analysis.</span>';
+            }
+            reader.readAsDataURL(file);
+        }
+
+        solveBtn.addEventListener('click', async () => {
+            const file = imageInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            // UI transitioning to Loading
+            loader.style.display = 'flex';
+            resultSection.style.display = 'none';
+            errorSection.style.display = 'none';
+            systemStatus.style.display = 'none';
+            solveBtn.disabled = true;
+            solveBtn.classList.add('processing');
+            solveBtn.querySelector('span').textContent = 'Processing...';
+
+            try {
+                const response = await fetch('/api/solve', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('equationOutput').textContent = data.equation;
+                    document.getElementById('solutionOutput').textContent = data.solution;
+                    resultSection.style.display = 'flex';
+                } else {
+                    errorText.textContent = data.error || 'System malfunction during analysis.';
+                    errorSection.style.display = 'flex';
+                }
+            } catch (error) {
+                errorText.textContent = 'Server connection lost: ' + error.message;
+                errorSection.style.display = 'flex';
+            } finally {
+                loader.style.display = 'none';
+                systemStatus.style.display = 'flex';
+                systemStatus.innerHTML = '<span class="status-indicator"></span><span class="status-text">Analysis complete. Terminal ready.</span>';
+                
+                solveBtn.disabled = false;
+                solveBtn.classList.remove('processing');
+                solveBtn.querySelector('span').textContent = 'Execute Analysis';
+            }
+        });
+    </script>
+</body>
+</html>

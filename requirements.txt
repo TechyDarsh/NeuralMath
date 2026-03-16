@@ -1,0 +1,9 @@
+flask
+sympy
+matplotlib
+pillow
+tensorflow==2.15
+numpy==1.26.4
+opencv-python
+matplotlib
+sympy
