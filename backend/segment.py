@@ -10,11 +10,62 @@ def segment_image(thresh):
     contours, _ = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     # Filter contours by size to remove small noise
-    valid_contours = []
+    img_h, img_w = thresh.shape
+    min_w = max(8, int(img_w * 0.005))
+    min_h = max(8, int(img_h * 0.005))
+    
+    rects = []
     for c in contours:
         x, y, w, h = cv2.boundingRect(c)
-        if w > 10 and h > 10:  # Basic filtering for size
-            valid_contours.append((x, y, w, h))
+        if w > min_w and h > min_h:  # Dynamic filtering for size
+            # Ignore extremely large boxes (likely the whole screen or noise)
+            if w < img_w * 0.8 and h < img_h * 0.8:
+                rects.append([x, y, w, h])
+            
+    # Merge overlapping or touching rectangles
+    def is_overlapping(r1, r2):
+        x1, y1, w1, h1 = r1
+        x2, y2, w2, h2 = r2
+        
+        intersect_x = max(0, min(x1+w1, x2+w2) - max(x1, x2))
+        intersect_y = max(0, min(y1+h1, y2+h2) - max(y1, y2))
+        
+        # 1. One box is almost entirely inside another (e.g., noise inside a character)
+        if intersect_x > min(w1, w2) * 0.8 and intersect_y > min(h1, h2) * 0.8:
+            return True
+            
+        # 2. Vertically separate but horizontally aligned (like '=' or 'i')
+        if intersect_x > min(w1, w2) * 0.5:
+            dist_y = max(y1, y2) - min(y1+h1, y2+h2)
+            if dist_y < max(h1, h2) * 1.5: # separated by small vertical gap
+                return True
+                
+        return False
+        
+    merged = True
+    while merged:
+        merged = False
+        new_rects = []
+        while len(rects) > 0:
+            r = rects.pop(0)
+            has_merged = False
+            for i, other in enumerate(new_rects):
+                if is_overlapping(r, other):
+                    x1, y1, w1, h1 = r
+                    x2, y2, w2, h2 = other
+                    nx = min(x1, x2)
+                    ny = min(y1, y2)
+                    nw = max(x1+w1, x2+w2) - nx
+                    nh = max(y1+h1, y2+h2) - ny
+                    new_rects[i] = [nx, ny, nw, nh]
+                    has_merged = True
+                    merged = True
+                    break
+            if not has_merged:
+                new_rects.append(r)
+        rects = new_rects
+
+    valid_contours = rects
             
     # Sort contours from left to right based on x-coordinate
     valid_contours.sort(key=lambda b: b[0])

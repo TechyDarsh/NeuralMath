@@ -18,8 +18,9 @@ def preprocess_image(image_path):
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     
     # Apply Adaptive Thresholding (invert it so text is white and background is black)
+    # Increase block size and C to remove background texture from photos
     thresh = cv2.adaptiveThreshold(blurred, 255, 
                                    cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                                   cv2.THRESH_BINARY_INV, 11, 2)
+                                   cv2.THRESH_BINARY_INV, 19, 10)
     
     return image, thresh
